@@ -329,7 +329,8 @@ with t1:
     st.session_state.shares = st.number_input(
         "発行済株式数(万株)",
         value=float(st.session_state.shares),
-        key="num_shares_cnt",)st.session_state.
+        key="num_shares_cnt",
+       )st.session_state.
     current_price = (st.number_input("現在の株価",
         value=float(st.session_state.current_price),
         key="num_cur_price",))st.session_state.
