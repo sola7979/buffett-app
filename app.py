@@ -1,5 +1,5 @@
 # buffett-app
-import numpy as np
+impor numpy as np
 import requests
 import streamlit as st
 import yfinance as yf
@@ -48,18 +48,22 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
                     st.session_state.f_base = float(st.session_state.a_fcf)
 
                 if not t.balance_sheet.empty:
-                    td = t.balance_sheet.loc["Total Debt"].iloc[0] if "Total Debt" in t.balance_sheet.index else 0
-                    cs = t.balance_sheet.loc["Cash And Cash Equivalents"].iloc[0] if "Cash And Cash Equivalents" in t.balance_sheet.index else 0
+                    td = t.balance_sheet.loc["Total Debt"].iloc if "Total Debt" in t.balance_sheet.index else 0
+                    cs = t.balance_sheet.loc["Cash And Cash Equivalents"].iloc if "Cash And Cash Equivalents" in t.balance_sheet.index else 0
                     st.session_state.n_debt = (td - cs) / 100000000
-                    ta = t.balance_sheet.loc["Total Assets"].iloc[0]
-                    te = t.balance_sheet.loc["Total Equity Gross Minority Interest"].iloc[0] if "Total Equity Gross Minority Interest" in t.balance_sheet.index else ta * 0.5
+                    ta = t.balance_sheet.loc["Total Assets"].iloc
+                    te = t.balance_sheet.loc["Total Equity Gross Minority Interest"].iloc if "Total Equity Gross Minority Interest" in t.balance_sheet.index else ta * 0.5
                     st.session_state.eq_r = te / ta
 
-                g_url = f"https://googleapis.com{api_key}"
+                # 💡 絶対にちぎれないようにURLを短く分割して合体させる形に修正
+                host = "https://googleapis.com"
+                path = "/v1beta/models/gemini-2.5-flash:generateContent"
+                g_url = f"{host}{path}?key={api_key}"
+                
                 p_text = f"バフェット流でレポート作って。特に技術、特許、R&D、AI、競合への優位性やモートを深く分析して。企業名:{st.session_state.c_name} セクター:{st.session_state.sec} FCF平均:{st.session_state.a_fcf:.1f}億円 純負債:{st.session_state.n_debt:.1f}億円 β値:{st.session_state.bt} 説明:{bsum[:1000]} 見出し:1.財務健康度 2.ビジネス特性 3.技術知財R&D 4.リスク総括"
                 res = requests.post(g_url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": p_text}]}]}, timeout=20)
                 if res.status_code == 200:
-                    st.session_state.ai_rep = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
                 else: st.session_state.ai_rep = f"エラー: {res.status_code}"
             st.success("解析完了！")
         except Exception as e: st.warning(f"エラー発生: {e}")
