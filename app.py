@@ -4,9 +4,9 @@ import streamlit as st
 
 st.set_page_config(page_title="Buffett AI", layout="centered")
 st.title("🏰 投資分析シミュレーター")
-st.caption("初期値ゼロ設計：手動数値試算 ＆ 企業名AI自動リサーチ")
+st.caption("バグ文字完全排除仕様：手動試算 ＆ 企業名AI自動リサーチ")
 
-# 状態初期化（すべて白紙・ゼロに設定）
+# 状態初期化
 keys = [
     "c_name", "f_base", "n_debt", "shs", "c_prc", 
     "bt", "eq_r", "g_s1", "g_t", "ai_rep",
@@ -26,7 +26,7 @@ api_key = st.text_input("Gemini API Key", type="password", key="g_key")
 t1, t2, t3, t4 = st.tabs(["📊 財務手入力", "🔒 モート評価", "🎯 試算結果", "🤖 AI分析・名前検索"])
 
 with t1:
-    st.subheader("1. 財務数値を手入力（四季報や株探の数値を入力）")
+    st.subheader("1. 財務数値を手入力")
     st.session_state.c_name = st.text_input("企業名（例: ソニーグループ）", value=st.session_state.c_name, key="in_name")
     st.session_state.c_prc = st.number_input("現在の株価（円）", value=float(st.session_state.c_prc), key="nm_cp")
     st.session_state.f_base = st.number_input("フリーキャッシュフロー（億円）", value=float(st.session_state.f_base), key="nm_fb")
@@ -97,14 +97,19 @@ with t4:
         else:
             try:
                 with st.spinner(f"Gemini AIが「{st.session_state.c_name}」の最新技術・知財データをリサーチ中..."):
-                    u = f"https://googleapis.com{api_key}"
                     
-                    # 💡 財務数値が未入力でも、名前だけでAIがインターネット情報を元に独自の定性・知財分析を行えるようにプロンプトを強化
+                    # 💡 画面幅による自動ちぎれ・合体バグを物理的に200%防ぐ「パーツ合体式URL」
+                    a = "https://"
+                    b = "generativelanguage"
+                    c = ".googleapis.com"
+                    d = "/v1beta/models/gemini-2.5-flash:generateContent"
+                    u = f"{a}{b}{c}{d}?key={api_key}"
+                    
                     txt = f"投資家ウォーレン・バフェットの視点を持つアナリストとして、以下の企業を徹底的に日本語でリサーチ・分析したレポートを作成してください。特に最新の技術トレンド、特許資産、研究開発（R&D）への注力度、AIやデジタル戦略、他社に対する技術的な優位性や参入障壁（経済的お堀＝モート）を深く掘り下げてください。企業名:{st.session_state.c_name} (手入力財務参考値がある場合 FCF:{st.session_state.f_base}億円 純負債:{st.session_state.n_debt}億円) 見出し:1️⃣ 企業のビジネスモデル特性と市場ポジション 2️⃣ 🔮 経済的お堀（モート）の強さ評価 3️⃣ 💡【最重要】技術・知財・R&Dイノベーション競争力（他社が真似できない強み） 4️⃣ 総括と長期的なテクノロジーリスク"
                     
                     res = requests.post(u, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": txt}]}]}, timeout=25)
                     if res.status_code == 200: 
-                        st.session_state.ai_rep = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                        st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
                     else: 
                         st.session_state.ai_rep = f"通信失敗 コード: {res.status_code} キーが正しいか確認してください。"
                 st.success("AIレポートの生成が完了しました！")
