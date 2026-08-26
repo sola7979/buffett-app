@@ -3,10 +3,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 
-st.set_page_config(
-    page_title="BA",
-    layout="centered"
-)
+st.set_page_config(page_title="BA", layout="centered")
 st.title("🏰 投資分析")
 
 # 状態初期化
@@ -275,9 +272,8 @@ with t4:
         else:
             try:
                 with st.spinner("AI解析中..."):
-                    h = "https://googleapis.com"
-                    p = "/v1beta/models/gemini-2.5-flash:generateContent"
-                    u = f"{h}{p}?key={api_key}"
+                    # 💡 絶対にちぎれないようにアドレスを1文字まではみ出さない形に変形
+                    u = f"https://googleapis.com{api_key}"
                     txt = f"バフェット流でレポート作って。特に技術、特許、R&D、AI、競合への優位性やモートを深く分析して。企業名:{st.session_state.c_name} セクター:{st.session_state.sec} 業界:{st.session_state.ind} FCF平均:{st.session_state.a_fcf:.1f}億円 純負債:{st.session_state.n_debt:.1f}億円 β値:{st.session_state.bt} 説明:{st.session_state.get('bsum_raw','')[:500]} 見出し:1.財務健康度 2.ビジネス特性 3.技術知財R&D 4.リスク総括"
                     res = requests.post(
                         u, 
@@ -287,11 +283,11 @@ with t4:
                     )
                     if res.status_code == 200:
                         st.session_state.ai_rep = (
-                            res.json()["candidates"][0]
-                            ["content"]["parts"][0]["text"]
+                            res.json()["candidates"]
+                            ["content"]["parts"]["text"]
                         )
                     else:
-                        st.session_state.ai_rep = "通信エラー"
+                        st.session_state.ai_rep = f"通信失敗 コード: {res.status_code}"
                 st.success("レポート生成完了！")
             except Exception as e:
                 st.error("解析失敗")
