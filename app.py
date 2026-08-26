@@ -54,7 +54,7 @@ if st.button("🔍 精密データを読み込む", use_container_width=True):
                     fcfs = [(o + i) / 100000000 for o, i in zip(ocfs, icfs)]
                     st.session_state.fcf_list = fcfs[:3]
                     st.session_state.avg_fcf = np.mean(fcfs[:3])
-                    st.session_state.fcf_base = float(st.session_state.avg_fcf) # 初期予測値にセット
+                    st.session_state.fcf_base = float(st.session_state.avg_fcf)
                 
                 if not bs.empty:
                     total_debt = bs.loc["Total Debt"].iloc if "Total Debt" in bs.index else 0
@@ -79,7 +79,6 @@ with tab1:
     st.write(f"直近の過去FCF推移（億円）: {[round(x,1) for x in st.session_state.fcf_list]}")
     st.session_state.fcf_base = st.number_input("予測基準とするFCF（億円／過去平均を推奨）", value=float(st.session_state.fcf_base))
     
-    # ★考え方ガイド（記憶保持される仕組みの中に配置）
     with st.expander("📖 フリーキャッシュフロー（FCF）の考え方と調べ方", expanded=False):
         st.markdown("""
         * **本質**: 企業が自由に使える純粋な現金。バフェット流投資で最も重視する指標です。
@@ -103,7 +102,6 @@ with tab1:
     with st.expander("📈 割引率（WACC）とベータ（β）の考え方", expanded=False):
         st.markdown("* **ベータ値**: 1.0より高いとハイリスク、低いとディフェンシブ。高い企業ほど割引率が上がり、株価が厳しく評価されます。")
 
-    # WACCのリアルタイム計算
     cost_of_equity = rf_rate + (st.session_state.beta * market_premium)
     eq_ratio = st.session_state.equity_ratio
     cost_of_debt = 0.02
@@ -139,14 +137,12 @@ with tab3:
         
     st.write("---")
     
-    # ★計算ロジック（ボタンを押さなくても動く、または押して確定する両対応に改善）
     g_s1_parsed = st.session_state.g_stage1 / 100
     g_t_parsed = st.session_state.g_terminal / 100
     
     if g_t_parsed >= calculated_wacc:
         st.error("エラー: 永久成長率はWACC（割引率）未満に設定してください。")
     else:
-        # 計算を実行
         pv_stage1 = 0
         fcf = st.session_state.fcf_base
         for year in range(1, 6):
@@ -168,17 +164,34 @@ with tab3:
         intrinsic_value = max(0, intrinsic_value)
         target_price = intrinsic_value * (1 - mos_rate)
         
-        # 画面に結果を常時リアルタイム出力（ボタンを押す手間も無くしました！）
+        cur_p = st.session_state.current_price
+        
+        # ★現在値との直接比較指標の計算
+        if intrinsic_value > 0:
+            vs_intrinsic = ((cur_p - intrinsic_value) / intrinsic_value) * 100
+            intrinsic_label = f"{'+' if vs_intrinsic >= 0 else ''}{vs_intrinsic:.1f}%"
+        else:
+            intrinsic_label = "測定不能"
+            
+        if target_price > 0:
+            vs_target = ((cur_p - target_price) / target_price) * 100
+            target_label = f"{'+' if vs_target >= 0 else ''}{vs_target:.1f}%"
+        else:
+            target_label = "測定不能"
+
         st.success("✨ 試算完了（リアルタイム更新中）")
-        st.metric(label="🎯 1株あたりの理論価値（適正株価）", value=f"{int(intrinsic_value):,} 円")
-        st.metric(label="🛡️ モート連動型 買付上限価格", value=f"{int(target_price):,} 円")
+        
+        # 📊 3つの株価を横並びで表示して一瞬で比較できるように変更
+        col1, col2, col3 = st.columns(3)
+        col1.metric(label="🏪 現在の株価", value=f"{int(cur_p):,} 円")
+        col2.metric(label="🎯 理論価値 (適正株価)", value=f"{int(intrinsic_value):,} 円", delta=f"現在値は {intrinsic_label}", delta_color="inverse")
+        col3.metric(label="🛡️ 買付上限価格", value=f"{int(target_price):,} 円", delta=f"現在値は {target_label}", delta_color="inverse")
         
         st.write("---")
         st.subheader("📢 投資判断シグナル")
-        cur_p = st.session_state.current_price
         if cur_p <= target_price:
-            st.success(f"✅ 【お買い得 / Buy】現在の株価（{int(cur_p)}円）は、買付上限以下です。")
+            st.success(f"✅ 【お買い得 / Buy】現在の株価（{int(cur_p)}円）は、安全余裕を持たせた買付上限以下です。")
         elif cur_p <= intrinsic_value:
-            st.warning(f"⚠️ 【適正価格 / Hold】理論価値の範囲内ですが、下値のクッションが不足しています。")
+            st.warning(f"⚠️ 【適正価格 / Hold】理論価値の範囲内ですが、下値のクッション（安全余裕）が不足しています。")
         else:
             st.error(f"❌ 【割高・見送り / Avoid】現在の株価は、理論上の本質的価値を超えています。")
