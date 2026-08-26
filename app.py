@@ -328,4 +328,42 @@ with t1:
     )
     st.session_state.shares = st.number_input(
         "発行済株式数(万株)",
-        value=float(st.session_state.shares),key="num_shares_cnt",)st.session_state.current_price = (st.number_input("現在の株価",value=float(st.session_state.current_price),key="num_cur_price",))st.session_state.beta = st.number_input("ベータ値(β)",value=float(st.session_state.beta),key="num_beta_val",)with t2:st.subheader("2. モート評価")st.session_state.m1 = st.checkbox("🔮 ブランド力", value=st.session_state.m1, key="chk_m1")st.session_state.m2 = st.checkbox("🔗 スイッチングコスト", value=st.session_state.m2, key="chk_m2")st.session_state.m3 = st.checkbox("🪙 低コスト優位性", value=st.session_state.m3, key="chk_m3")st.session_state.m4 = st.checkbox("📜 特許・許認可", value=st.session_state.m4, key="chk_m4")st.session_state.m5 = st.checkbox("🕸️ ネットワーク効果", value=st.session_state.m5, key="chk_m5")with t3:st.subheader("3. 理論株価試算")st.session_state.g_stage1 = st.number_input("今後5年の予測成長率(％)", value=float(st.session_state.g_stage1), step=0.5, key="num_g_s1")st.session_state.g_terminal = st.number_input("6年目以降の永久成長率(％)", value=float(st.session_state.g_terminal), step=0.1, key="num_g_term")st.write("---")if g_t_parsed >= c_wacc:st.error("永久成長率はWACC未満にしてください")else:st.success("試算完了")col1, col2, col3 = st.columns(3)col1.metric(label="🏪 現在株価", value=f"{int(cur_p):,} 円")col2.metric(label="🎯 適正株価", value=f"{int(intrinsic_value):,} 円", delta=f"現在値 {ins_label}", delta_color="inverse")col3.metric(label="🛡️ 買付上限", value=f"{int(target_price):,} 円", delta=f"現在値 {tg_label}", delta_color="inverse")st.write("---")st.subheader("📢 投資判断シグナル")if cur_p <= target_price: st.success("✅ 【Buy】買付上限以下です。")elif cur_p <= intrinsic_value: st.warning("⚠️ 【Hold】クッション不足です。")else: st.error("❌ 【Avoid】割高水準です。")with t4:st.subheader("🤖 AI多角的ビジネス解析")st.markdown(st.session_state.ai_report)
+        value=float(st.session_state.shares),
+        key="num_shares_cnt",)st.session_state.
+    current_price = (st.number_input("現在の株価",
+        value=float(st.session_state.current_price),
+        key="num_cur_price",))st.session_state.
+        beta = st.number_input("ベータ値(β)",
+        value=float(st.session_state.beta),
+        key="num_beta_val",)with t2:st.
+        subheader("2. モート評価")st.session_state.
+        m1 = st.checkbox("🔮 ブランド力", value=st.session_state.m1,
+        key="chk_m1")st.session_state.m2 = st.checkbox("🔗 スイッチングコスト", 
+        value=st.session_state.m2, 
+        key="chk_m2")st.session_state.m3 = st.
+        checkbox("🪙 低コスト優位性", value=st.session_state.m3, 
+                 key="chk_m3")st.session_state.m4 = st.
+        checkbox("📜 特許・許認可", value=st.session_state.m4, 
+        key="chk_m4")st.session_state.m5 = st.
+        checkbox("🕸️ ネットワーク効果", value=st.session_state.m5,
+                 key="chk_m5")with t3:st.subheader("3. 理論株価試算")st.
+        session_state.g_stage1 = st.number_input("今後5年の予測成長率(％)",
+        value=float(st.session_state.g_stage1), step=0.5, key="num_g_s1")st.
+        session_state.g_terminal = st.number_input("6年目以降の永久成長率(％)", 
+        value=float(st.session_state.g_terminal),
+        step=0.1, key="num_g_term")st.write("---")if g_t_parsed >= c_wacc:st.
+        error("永久成長率はWACC未満にしてください")else:st.success("試算完了")col1, col2, 
+        col3 = st.columns(3)col1.metric(label="🏪 現在株価", value=f"{int(cur_p):,} 円")col2.metric(label="🎯 適正株価", 
+        value=f"{int(intrinsic_value):,} 円",
+        delta=f"現在値 {ins_label}", 
+        delta_color="inverse")col3.
+        metric(label="🛡️ 買付上限", 
+        value=f"{int(target_price):,} 円", 
+        delta=f"現在値 {tg_label}", 
+        delta_color="inverse")st.write("---")st.
+        subheader("📢 投資判断シグナル")if cur_p <= target_price: st.
+        success("✅ 【Buy】買付上限以下です。")elif cur_p <= intrinsic_value: st.
+        warning("⚠️ 【Hold】クッション不足です。")else: st.
+        error("❌ 【Avoid】割高水準です。")with t4:st.
+        subheader("🤖 AI多角的ビジネス解析")st.
+        markdown(st.session_state.ai_report)
