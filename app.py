@@ -1,11 +1,10 @@
 import streamlit as st
 import numpy as np
 import requests
-import json
 
 st.set_page_config(page_title="Buffett AI Analyzer", layout="centered")
 st.title("🏰 総合投資分析ツール")
-st.caption("財務バリュエーション ＆ 知財技術AI分析")
+st.caption("財務バリュエーション ＆ 知財技術AI分析（接続診断つき）")
 
 # 全データの一元管理（セッション保持）
 for k, v in {
@@ -24,40 +23,23 @@ st.write("---")
 st.subheader("🏢 2. 基礎データの読み込み")
 ticker_input = st.text_input("証券コード4桁（例: 7203）", value="7203", key="target_ticker_code")
 
-# 📊 【ボタン①】財務データ・企業名を100%確実に取得するボタン
+# 📊 【ボタン①】あなたの計算用：財務データを取得するボタン
 if st.button("📊 1. 財務データを読み込む", use_container_width=True, key="load_finance_btn"):
     if ticker_input and len(ticker_input) == 4 and ticker_input.isdigit():
         try:
-            with st.spinner("国内データベースから正式な日本語企業名と株価を同期中..."):
-                # 🛡️ yfinanceが弾かれた場合の、国内の超安定J-Quants/株価システム互換WebAPIルート
-                # 4桁のコードから日本語企業名と現在のリアルタイム株価を一発で100%確実にぶち抜きます
-                backup_url = f"https://yahoo.co.jp{ticker_input}.T"
-                headers = {"User-Agent": "Mozilla/5.0"}
-                html_res = requests.get(backup_url, headers=headers, timeout=10).text
-                
-                # HTML内から力技で正式な日本語会社名と株価の文字を抽出するプログラム
-                detected_name = f"コード {ticker_input} の企業"
-                if "title" in html_res.lower():
-                    try:
-                        detected_name = html_res.split("<title>【")[1].split("】")[0]
-                    except:
-                        pass
-                
-                # yfinanceもバックアップ並列で動かして財務データを回収
+            with st.spinner("データ取得中..."):
                 import yfinance as yf
                 t_obj = yf.Ticker(f"{ticker_input}.T")
                 info = t_obj.info
                 
-                # 企業名・株価の確定（国内ルートで取れた日本語名を最優先！）
-                st.session_state.c_name = detected_name if "コード" not in detected_name else (info.get("shortName") or info.get("longName") or f"コード: {ticker_input}")
-                st.session_state.c_prc = info.get("regularMarketPrice") or info.get("currentPrice") or info.get("ask") or st.session_state.c_prc
+                st.session_state.c_name = info.get("longName") or info.get("shortName") or f"コード: {ticker_input}"
+                st.session_state.c_prc = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("ask") or st.session_state.c_prc
                 st.session_state.shs = (info.get("sharesOutstanding") or (st.session_state.shs * 10000)) / 10000
                 st.session_state.bt = info.get("beta") or 1.0
-                st.session_state.sec = info.get("sector", "製造・インフラ・サービス")
-                st.session_state.ind = info.get("industry", "一般産業セクター")
-                st.session_state.bsum_raw = info.get("longBusinessSummary", "開示資料を参照してください。")
+                st.session_state.sec = info.get("sector", "不明")
+                st.session_state.ind = info.get("industry", "不明")
+                st.session_state.bsum_raw = info.get("longBusinessSummary", "開示データ参照")
 
-                # 財務データ（CF / BS）の安全な抽出
                 try: cf_df = t_obj.get_cashflow()
                 except: cf_df = t_obj.cashflow
                 if not cf_df.empty and "Operating Cash Flow" in cf_df.index:
@@ -79,15 +61,15 @@ if st.button("📊 1. 財務データを読み込む", use_container_width=True,
                     te = float(bs_df.loc["Total Equity Gross Minority Interest"].dropna().iloc) if "Total Equity Gross Minority Interest" in bs_df.index else ta * 0.5
                     st.session_state.eq_r = te / ta
                     
-            st.success(f"100%データ同期成功: {st.session_state.c_name}")
+            st.success(f"データ取得完了: {st.session_state.c_name}")
         except Exception as e:
-            st.warning(f"データ連携に一部制限がありますが、手動で数値を補正してシミュレーション可能です。")
+            st.error(f"接続エラー: Yahooへの通信が遮断されている可能性があります。手動で入力するか、画面下の「診断ボタン」をお試しください。")
 
 st.write("---")
 
 t1, t2, t3, t4 = st.tabs(["📊 財務", "🔒 モート", "🎯 試算", "🤖 AI分析"])
 
-# パラメータ計算
+# あなたの試算パラメータ計算
 c_eq = 0.01 + (st.session_state.bt * 0.06)
 c_wacc = (c_eq * st.session_state.eq_r) + (0.02 * (1 - st.session_state.eq_r))
 g_s1_p = st.session_state.g_s1 / 100
@@ -108,7 +90,7 @@ else:
     tg_lbl = f"{'+' if ((cur_p - tg_p)/tg_p*100) >= 0 else ''}{(cur_p - tg_p)/tg_p*100:.1f}%" if tg_p > 0 else "不可"
 
 with t1:
-    st.subheader("1. 財務データの確認・調整（自己分析）")
+    st.subheader("1. 財務データの確認・調整")
     st.text_input("企業名", value=st.session_state.c_name, key="disp_c_name")
     st.write("過去FCF推移（億円）:", [round(x, 1) for x in st.session_state.f_list])
     st.session_state.f_base = st.number_input("予測基準FCF", value=float(st.session_state.f_base), key="num_f_base")
@@ -132,7 +114,7 @@ with t3:
     st.write("---")
     if g_t_p >= c_wacc: st.error("永久成長率はWACC未満にしてください")
     else:
-        st.success("あなたの入力に基づく試算結果")
+        st.success("試算結果（現在値との自動比較）")
         cl1, cl2, cl3 = st.columns(3)
         cl1.metric(label="🏪 現在株価", value=f"{int(cur_p):,} 円")
         cl2.metric(label="🎯 適正株価", value=f"{int(ins_v):,} 円", delta=f"現在値 {ins_lbl}", delta_color="inverse")
@@ -145,30 +127,35 @@ with t3:
 
 with t4:
     st.subheader("🤖 AI多角的ビジネス解析（独立AI分析）")
-    st.caption("客観的なAIの目線で、知財や最先端テクノロジー、非財務リスクを徹底解析します")
-    
     if st.button("🤖 AI分析を実行する", type="primary", use_container_width=True, key="exec_ai_analysis_btn"):
-        if not api_key:
-            st.error("キーを入力してください。アプリ上部の「🔑 1. AI鍵設定」に入力枠があります。")
-        elif st.session_state.c_name == "未取得":
-            st.error("まず最初に「📊 1. 財務データを読み込む」ボタンを押して企業データを確定させてください。")
+        if not api_key: st.error("キーを入力してください。")
+        elif st.session_state.c_name == "未取得": st.error("まず財務データを読み込んでください。")
         else:
             try:
-                with st.spinner("Gemini AIが特許技術・イノベーション資産をディープ解析中..."):
+                with st.spinner("Gemini AIが特許技術を解析中..."):
                     host = "https://googleapis.com"
                     path = "/v1beta/models/gemini-2.5-flash:generateContent"
                     g_url = f"{host}{path}?key={api_key}"
-                    
                     p_text = f"バフェット流のアナリストとして、企業の特許技術、R&D、AI戦略、競合に対する技術の優位性や参入障壁(モート)を深く多角的に分析し、日本語レポートを作って。企業名:{st.session_state.c_name} セクター:{st.session_state.sec} 業界:{st.session_state.ind} FCF平均:{st.session_state.a_fcf:.1f}億円 純負債:{st.session_state.n_debt:.1f}億円 β値:{st.session_state.bt} 説明:{st.session_state.get('bsum_raw', 'なし')[:1000]} 見出し:1.財務健康度 2.ビジネス特性 3.技術知財R&D 4.リスク総括"
-                    
                     res = requests.post(g_url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": p_text}]}]}, timeout=25)
-                    if res.status_code == 200:
-                        st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
-                    else:
-                        st.session_state.ai_rep = f"AI通信エラー (コード {res.status_code}): キーが正しいか確認してください。"
+                    if res.status_code == 200: st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
+                    else: st.session_state.ai_rep = f"AI通信エラー (コード {res.status_code})"
                 st.success("AI総合レポートの生成が完了しました！")
-            except Exception as ai_e:
-                st.error(f"AI解析中にエラーが発生しました: {ai_e}")
-                
+            except Exception as ai_e: st.error(f"AI解析エラー: {ai_e}")
     st.write("---")
     st.markdown(st.session_state.ai_rep)
+
+# 🔍 【新機能】画面の最下部に設置した接続・不具合診断エリア
+st.write("---")
+st.subheader("🔎 3. Yahooデータ接続の診断（動かない時の確認用）")
+if st.button("⚙️ Yahoo接続テストを実行する", use_container_width=True, key="diagnostic_btn"):
+    try:
+        # 直接YahooのWEBサーバーに通信が通るかチェック
+        test_res = requests.get("https://yahoo.com", timeout=5)
+        if test_res.status_code == 200:
+            st.success("✅ Yahooの通信自体は正常です！ライブラリ（yfinance）のバージョンアップで直る可能性があります。")
+            st.info("💡 解決方法: GitHubの requirements.txt を開き、中身に「yfinance --upgrade」と書き換えてみてください。")
+        else:
+            st.error(f"❌ YahooサーバーがStreamlitCloudからのアクセスを一時拒否しています (エラーコード: {test_res.status_code})")
+    except Exception as diag_e:
+        st.error(f"❌ 通信自体が完全に遮断されています: {diag_e}")
