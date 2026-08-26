@@ -1,5 +1,5 @@
 # buffett-app
-impor numpy as np
+import numpy as np
 import requests
 import streamlit as st
 import yfinance as yf
