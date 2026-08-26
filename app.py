@@ -3,6 +3,7 @@ import streamlit as st
 import yfinance as yf
 import numpy as np
 
+# 画面設定（スマートフォン最適化）
 st.set_page_config(page_title="Professional Buffett AI Analyzer", layout="centered")
 
 st.title("🏰 本格派 DCF ＆ AI企業総合分析ツール")
@@ -18,8 +19,8 @@ if "current_price" not in st.session_state: st.session_state.current_price = 126
 if "beta" not in st.session_state: st.session_state.beta = 1.0
 if "equity_ratio" not in st.session_state: st.session_state.equity_ratio = 0.50
 
-# AI分析用のテキストデータを保持する変数
-if "ai_summary" not in st.session_state: st.session_state.ai_summary = "データが読み込まれていません。"
+# AI分析用テキストデータの保持
+if "ai_summary" not in st.session_state: st.session_state.ai_summary = "データが読み込まれていません。上のボタンを押してください。"
 if "business_summary" not in st.session_state: st.session_state.business_summary = ""
 
 # ユーザー入力値の保持
@@ -70,19 +71,18 @@ if st.button("🔍 精密データ ＆ AI分析基盤を読み込む", use_conta
                     total_equity = bs.loc["Total Equity Gross Minority Interest"].iloc if "Total Equity Gross Minority Interest" in bs.index else (total_assets * 0.5)
                     st.session_state.equity_ratio = total_equity / total_assets
 
-                # 技術・知財、マクロ環境の抽出ロジックの追加
+                # 技術・知財、ニュースの抽出
                 sector = info.get("sector", "不明")
                 industry = info.get("industry", "不明")
                 news_list = ticker.news[:3]
                 news_titles = [n.get("title", "") for n in news_list] if news_list else ["直近の重大ニュースなし"]
                 
-                # 技術に関するキーワード抽出（簡易スコアリング）
+                # 技術に関するキーワード抽出
                 tech_keywords = ["technology", "patent", "R&D", "software", "AI", "intellectual property", "開発", "特許", "技術"]
                 has_tech_focus = any(kw in st.session_state.business_summary.lower() for kw in tech_keywords)
 
-                # AIレポートの生成（全視点を網羅したプロンプトベース）
+                # 🤖 AIレポートの自動生成（これが4つ目のタブに表示されます）
                 st.session_state.ai_summary = f"""
-                ### 📝 AI多角的クロス評価レポート
                 **分析対象:** {st.session_state.company_name} ({ticker_input}.T)  
                 **業界分類:** {sector} / {industry}  
 
@@ -99,7 +99,7 @@ if st.button("🔍 精密データ ＆ AI分析基盤を読み込む", use_conta
                 * **割引率の妥当性:** 本アプリがCAPM（資本資産価格モデル）を用いて動的に弾き出した割引率（WACC）は、企業の負債・自己資本比率とボラティリティを反映した「客観的なハードルレート」として機能しています。
                 * **安全余裕の思想:** 定性お堀（モートスコア）が高ければ高いほど、将来予測のブレが小さくなるため、AIとしても買付上限の基準を理論株価に近づける判断を強く支持します。
 
-                #### 4️⃣ 💡 【追加】技術・知財・イノベーションの優位性分析
+                #### 4️⃣ 💡 技術・知財・イノベーションの優位性分析
                 * **開示文書の技術判定:** {f'事業概要に特許、R&D、テクノロジーに関する強い言及が見られます。独自の知財保護や技術的な参入障壁（モートの項目④）を構築できている可能性が高いです。' if has_tech_focus else '伝統的・インフラ的なビジネスモデルであり、最新技術による急成長よりは、既存インフラや顧客基盤による安定性が強みとなります。'}
                 * **技術リスク/機会:** テクノロジーのライフサイクルが早い現代において、当セクター（{sector}）は継続的なR&D投資やシステム内製化が、長期的なフリーキャッシュフローを維持するための生命線となります。
                 """
@@ -107,10 +107,9 @@ if st.button("🔍 精密データ ＆ AI分析基盤を読み込む", use_conta
         except Exception as e:
             st.warning(f"一部データの自動取得に失敗しました。数値を手動入力してください。")
 
-# タブの描画
+# タブの作成（財務、お堀、試算、AIレポートの4大要素）
 tab1, tab2, tab3, tab4 = st.tabs(["📊 財務パラメータ", "🔒 競争優位性(モート)", "🎯 精密バリュエーション", "🤖 AI総合分析レポート"])
 
-# --- タブ1〜3のロジックは一切変更なし（完全維持） ---
 with tab1:
     st.subheader("1. 財務基礎データおよび市場変数の確認")
     c_name = st.text_input("企業名", value=st.session_state.company_name)
@@ -126,6 +125,7 @@ with tab1:
     rf_rate = st.number_input("リスクフリーレート（日本国債10年利回り相当 ％）", value=1.0) / 100
     market_premium = st.number_input("市場全体の期待リターン（％）", value=6.0) / 100
     st.session_state.beta = st.number_input("この企業のベータ値（リスク指標 β）", value=float(st.session_state.beta))
+    
     cost_of_equity = rf_rate + (st.session_state.beta * market_premium)
     eq_ratio = st.session_state.equity_ratio
     cost_of_debt = 0.02
@@ -145,6 +145,7 @@ with tab2:
 
 with tab3:
     st.subheader("3. 2段階DCFモデルによる理論株価試算")
+    st.markdown("**📊 将来予測パラメータ**")
     st.session_state.g_stage1 = st.number_input("① 今後5年間の予測成長率（％）", value=float(st.session_state.g_stage1), step=0.5)
     st.session_state.g_terminal = st.number_input("② 6年目以降の永久成長率（％）", value=float(st.session_state.g_terminal), step=0.1)
     st.write("---")
@@ -169,3 +170,4 @@ with tab3:
         enterprise_value = pv_stage1 + pv_stage2 + pv_terminal
         shareholder_value = enterprise_value - st.session_state.net_debt
         intrinsic_value = (shareholder_value * 100000000) / (st.session_state.shares * 10000)
+        intrinsic_value = max(0, intrinsic_value)
