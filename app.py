@@ -109,7 +109,7 @@ with tab2:
 with tab3:
     st.subheader("3. 2段階DCFモデルによる理論株価試算")
     
-    st.markdown("**📊 将来予測パラメータ（テンキー入力に変更）**")
+    st.markdown("**📊 将来予測パラメータ**")
     # ★スライダーを廃して、スマホで入力しやすいnumber_inputに変更
     g_stage1 = st.number_input("① 今後5年間の予測成長率（％）", value=8.0, step=0.5) / 100
     g_terminal = st.number_input("② 6年目以降の永久成長率（％）", value=0.5, step=0.1) / 100
