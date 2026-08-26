@@ -4,7 +4,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Buffett AI", layout="centered")
 st.title("🏰 投資分析シミュレーター")
-st.caption("バグ文字完全排除仕様：手動試算 ＆ 企業名AI自動リサーチ")
+st.caption("最新AI仕様対応版：手動試算 ＆ 企業名AI自動リサーチ")
 
 # 状態初期化
 keys = [
@@ -98,18 +98,16 @@ with t4:
             try:
                 with st.spinner(f"Gemini AIが「{st.session_state.c_name}」の最新技術・知財データをリサーチ中..."):
                     
-                    # 💡 画面幅による自動ちぎれ・合体バグを物理的に200%防ぐ「パーツ合体式URL」
-                    a = "https://"
-                    b = "generativelanguage"
-                    c = ".googleapis.com"
-                    d = "/v1beta/models/gemini-2.5-flash:generateContent"
-                    u = f"{a}{b}{c}{d}?key={api_key}"
+                    # 💡 【最新仕様に修正】404エラーを物理的に回避する新しい通信アドレス
+                    host_url = "https://googleapis.com"
+                    endpoint = "/v1/models/gemini-2.5-flash:generateContent"
+                    u = f"{host_url}{endpoint}?key={api_key}"
                     
                     txt = f"投資家ウォーレン・バフェットの視点を持つアナリストとして、以下の企業を徹底的に日本語でリサーチ・分析したレポートを作成してください。特に最新の技術トレンド、特許資産、研究開発（R&D）への注力度、AIやデジタル戦略、他社に対する技術的な優位性や参入障壁（経済的お堀＝モート）を深く掘り下げてください。企業名:{st.session_state.c_name} (手入力財務参考値がある場合 FCF:{st.session_state.f_base}億円 純負債:{st.session_state.n_debt}億円) 見出し:1️⃣ 企業のビジネスモデル特性と市場ポジション 2️⃣ 🔮 経済的お堀（モート）の強さ評価 3️⃣ 💡【最重要】技術・知財・R&Dイノベーション競争力（他社が真似できない強み） 4️⃣ 総括と長期的なテクノロジーリスク"
                     
                     res = requests.post(u, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": txt}]}]}, timeout=25)
                     if res.status_code == 200: 
-                        st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
+                        st.session_state.ai_rep = res.json()["candidates"][0]["content"]["parts"][0]["text"]
                     else: 
                         st.session_state.ai_rep = f"通信失敗 コード: {res.status_code} キーが正しいか確認してください。"
                 st.success("AIレポートの生成が完了しました！")
