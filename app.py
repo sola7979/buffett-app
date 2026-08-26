@@ -1,5 +1,4 @@
-# buffett-appimport numpy as np
-import numpy as np
+# buffett-appimport numpy as npimport numpy as np
 import requests
 import streamlit as st
 import yfinance as yf
@@ -13,7 +12,7 @@ for k, v in {
     "c_name": "未取得", "f_list": [10.0, 10.0, 10.0], "a_fcf": 10.0, "n_debt": 215.0,
     "shs": 5002.0, "c_prc": 1263.0, "bt": 1.0, "eq_r": 0.5, "sec": "未取得",
     "ind": "未取得", "ai_rep": "未実行", "f_base": 10.0, "g_s1": 8.0, "g_t": 0.5,
-    "m1": False, "m2": False, "m3": False, "m4": False, "m5": False
+    "m1": False, "m2": False, "m3": False, "m4": False, "m5": False, "last_ticker": ""
 }.items():
     if k not in st.session_state: st.session_state[k] = v
 
@@ -22,13 +21,15 @@ api_key = st.text_input("Gemini APIキーを入力", type="password", key="user_
 
 st.write("---")
 st.subheader("🏢 2. 証券コード入力")
-ticker_input = st.text_input("コード4桁", value="7203", key="target_ticker_code")
+# 💡 ボタンを押さなくても、数字を変えて確定した瞬間に動くように変更
+ticker_input = st.text_input("コード4桁（数字を変えて確定すると自動解析）", value="7203", key="target_ticker_code")
 
-if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysis_btn"):
-    if not api_key: st.error("キーを入力してください")
-    elif ticker_input and len(ticker_input) == 4 and ticker_input.isdigit():
+# 💡 自動トリガー（コードが新しく入力されたら勝手に走る仕組み）
+if api_key and ticker_input and len(ticker_input) == 4 and ticker_input.isdigit():
+    if st.session_state.last_ticker != ticker_input:
+        st.session_state.last_ticker = ticker_input
         try:
-            with st.spinner("解析中..."):
+            with st.spinner("企業データを取得し、AI解析を実行中..."):
                 t = yf.Ticker(f"{ticker_input}.T")
                 info = t.info
                 st.session_state.c_name = info.get("longName") or info.get("shortName") or f"コード: {ticker_input}"
@@ -41,7 +42,6 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
 
                 try: cf_df = t.get_cashflow()
                 except: cf_df = t.cashflow
-                
                 if not cf_df.empty and "Operating Cash Flow" in cf_df.index:
                     oc = cf_df.loc["Operating Cash Flow"].dropna().values
                     ic = cf_df.loc["Investing Cash Flow"].dropna().values if "Investing Cash Flow" in cf_df.index else oc * 0
@@ -53,7 +53,6 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
 
                 try: bs_df = t.get_balance_sheet()
                 except: bs_df = t.balance_sheet
-
                 if not bs_df.empty:
                     td = float(bs_df.loc["Total Debt"].dropna().iloc) if "Total Debt" in bs_df.index else 0.0
                     cs = float(bs_df.loc["Cash And Cash Equivalents"].dropna().iloc) if "Cash And Cash Equivalents" in bs_df.index else 0.0
@@ -68,9 +67,11 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
                 p_text = f"バフェット流でレポート作って。特に技術、特許、R&D、AI、競合への優位性やモートを深く分析して。企業名:{st.session_state.c_name} セクター:{st.session_state.sec} FCF平均:{st.session_state.a_fcf:.1f}億円 純負債:{st.session_state.n_debt:.1f}億円 β値:{st.session_state.bt} 説明:{bsum[:1000]} 見出し:1.財務健康度 2.ビジネス特性 3.技術知財R&D 4.リスク総括"
                 res = requests.post(g_url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": p_text}]}]}, timeout=20)
                 if res.status_code == 200: st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
-                else: st.session_state.ai_rep = f"エラー: {res.status_code}"
-            st.success("すべてのデータ解析が正常に完了しました！")
-        except Exception as e: st.warning(f"データ取得完了（一部数値自動補正）: {st.session_state.c_name}")
+                else: st.session_state.ai_rep = f"AI通信エラー: {res.status_code}"
+            st.success("すべての自動解析が完了しました！")
+        except Exception as e: st.warning(f"自動取得完了（一部補正あり）: {st.session_state.c_name}")
+elif not api_key:
+    st.info("💡 解析を始めるには、まず一番上にGemini APIキーを入力してください。")
 
 t1, t2, t3, t4 = st.tabs(["📊 財務", "🔒 モート", "🎯 試算", "🤖 AI分析"])
 
@@ -100,11 +101,9 @@ with t1:
     st.session_state.f_base = st.number_input("予測基準FCF", value=float(st.session_state.f_base), key="num_f_base")
     with st.expander("📖 フリーキャッシュフロー(FCF)のガイド"):
         st.markdown("* **本質**: 企業が自由に使える純粋な現金。バフェットが最重視する指標。\n* **計算式**: 営業CF ＋ 投資CF")
-    
     st.session_state.n_debt = st.number_input("純有利子負債", value=float(st.session_state.n_debt), key="num_n_debt")
     with st.expander("📖 純有利子負債のガイド"):
         st.markdown("* **本質**: 借金から現預金を引いた実質借金。マイナス（実質無借金）は超健全企業。")
-        
     st.session_state.shs = st.number_input("発行済株式数(万株)", value=float(st.session_state.shs), key="num_shs")
     st.session_state.c_prc = st.number_input("現在の株価", value=float(st.session_state.c_prc), key="num_c_prc")
     st.session_state.bt = st.number_input("ベータ値(β)", value=float(st.session_state.bt), key="num_bt")
@@ -128,7 +127,6 @@ with t3:
     with st.expander("🧮 2段階成長率のガイド"):
         st.markdown("* **永久成長率**: 6年目以降に会社が永遠に続ける成長率。成熟した日本市場では**0%〜1%**にするのが保守的で安全です。")
     st.write("---")
-    
     if g_t_p >= c_wacc: st.error("永久成長率はWACC未満にしてください")
     else:
         st.success("試算完了")
