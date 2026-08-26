@@ -1,5 +1,4 @@
-# buffett-app
-import numpy as np
+# buffett-appimport numpy as np
 import requests
 import streamlit as st
 import yfinance as yf
@@ -39,23 +38,25 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
                 st.session_state.ind = info.get("industry", "不明")
                 bsum = info.get("longBusinessSummary", "なし")
 
+                # 💡 キャッシュフローの数値取得エラー（.ilocバグ）を修正
                 if not t.cashflow.empty and "Operating Cash Flow" in t.cashflow.index:
                     oc = t.cashflow.loc["Operating Cash Flow"].values
                     ic = t.cashflow.loc["Investing Cash Flow"].values if "Investing Cash Flow" in t.cashflow.index else oc * 0
-                    fcfs = [(o + i) / 100000000 for o, i in zip(oc, ic)]
+                    fcfs = [(float(o) + float(i)) / 100000000 for o, i in zip(oc, ic)]
                     st.session_state.f_list = fcfs[:3]
                     st.session_state.a_fcf = np.mean(fcfs[:3])
                     st.session_state.f_base = float(st.session_state.a_fcf)
 
+                # 💡 バランスシートの数値取得エラー（.ilocバグ）を修正
                 if not t.balance_sheet.empty:
-                    td = t.balance_sheet.loc["Total Debt"].iloc if "Total Debt" in t.balance_sheet.index else 0
-                    cs = t.balance_sheet.loc["Cash And Cash Equivalents"].iloc if "Cash And Cash Equivalents" in t.balance_sheet.index else 0
+                    td = float(t.balance_sheet.loc["Total Debt"].iloc[0]) if "Total Debt" in t.balance_sheet.index else 0.0
+                    cs = float(t.balance_sheet.loc["Cash And Cash Equivalents"].iloc[0]) if "Cash And Cash Equivalents" in t.balance_sheet.index else 0.0
                     st.session_state.n_debt = (td - cs) / 100000000
-                    ta = t.balance_sheet.loc["Total Assets"].iloc
-                    te = t.balance_sheet.loc["Total Equity Gross Minority Interest"].iloc if "Total Equity Gross Minority Interest" in t.balance_sheet.index else ta * 0.5
+                    
+                    ta = float(t.balance_sheet.loc["Total Assets"].iloc[0])
+                    te = float(t.balance_sheet.loc["Total Equity Gross Minority Interest"].iloc[0]) if "Total Equity Gross Minority Interest" in t.balance_sheet.index else ta * 0.5
                     st.session_state.eq_r = te / ta
 
-                # 💡 絶対にちぎれないようにURLを短く分割して合体させる形に修正
                 host = "https://googleapis.com"
                 path = "/v1beta/models/gemini-2.5-flash:generateContent"
                 g_url = f"{host}{path}?key={api_key}"
@@ -66,12 +67,13 @@ if st.button("🔍 解析を実行", use_container_width=True, key="exec_analysi
                     st.session_state.ai_rep = res.json()["candidates"]["content"]["parts"]["text"]
                 else: st.session_state.ai_rep = f"エラー: {res.status_code}"
             st.success("解析完了！")
-        except Exception as e: st.warning(f"エラー発生: {e}")
+        except Exception as e: st.warning(f"データ取得に一部失敗したため手動補正モードになります: {e}")
 
 t1, t2, t3, t4 = st.tabs(["📊 財務", "🔒 モート", "🎯 試算", "🤖 AI分析"])
 
+# 💡 前回の崩れを完全修復
 c_eq = 0.01 + (st.session_state.bt * 0.06)
-c_wacc = (c_equity := c_eq * st.session_state.eq_r) + (0.02 * (1 - st.session_state.eq_r))
+c_wacc = (c_eq * st.session_state.eq_r) + (0.02 * (1 - st.session_state.eq_r))
 g_s1_p = st.session_state.g_s1 / 100
 g_t_p = st.session_state.g_t / 100
 
